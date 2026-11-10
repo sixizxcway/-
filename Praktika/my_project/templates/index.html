@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оживление Фото по Тексту</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 24px;
+            color: #38bdf8;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        textarea, input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #fff;
+            font-size: 14px;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: #0284c7;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #0369a1;
+        }
+        button:disabled {
+            background-color: #475569;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 500;
+            color: #38bdf8;
+        }
+        .result-box {
+            margin-top: 25px;
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Оживление Фото по Тексту</h1>
+    <form id="animationForm">
+        <div class="form-group">
+            <label for="image">Выберите фотографию лица:</label>
+            <input type="file" id="image" accept="image/*" required>
+        </div>
+
+        <div class="form-group">
+            <label for="text">Введите текст для озвучки:</label>
+            <textarea id="text" placeholder="Привет! Я ожившее фото..." required></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn">Сгенерировать видео</button>
+    </form>
+
+    <div class="status" id="statusText"></div>
+
+    <div class="result-box" id="resultBox">
+        <h3>Готовый результат:</h3>
+        <video id="outputVideo" controls autoplay></video>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('animationForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusText = document.getElementById('statusText');
+    const resultBox = document.getElementById('resultBox');
+    const outputVideo = document.getElementById('outputVideo');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const imageInput = document.getElementById('image').files[0];
+        const textInput = document.getElementById('text').value;
+
+        const formData = new FormData();
+        formData.append('image', imageInput);
+        formData.append('text', textInput);
+
+        submitBtn.disabled = true;
+        statusText.innerText = '⏳ Генерация аудио и работа нейросети... Это может занять пару минут.';
+        resultBox.style.display = 'none';
+
+        try {
+            const response = await fetch('/generate', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                statusText.innerText = '✨ Успешно сгенерировано!';
+
+                // Передаем новый путь к видео и сразу обновляем плеер
+                outputVideo.src = data.video_url + '?t=' + new Date().getTime(); // защита от кеширования
+                outputVideo.load();
+
+                // Показываем блок с результатом
+                resultBox.style.display = 'block';
+
+                // Плавная прокрутка к видео
+                resultBox.scrollIntoView({ behavior: 'smooth' });
+
+                // Пробуем запустить автовоспроизведение
+                outputVideo.play().catch(err => {
+                    console.log("Автовоспроизведение заблокировано браузером, нажмите Play вручную.");
+                });
+            } else {
+                statusText.innerText = '❌ Ошибка: ' + (data.error || 'Не удалось сгенерировать');
+            }
+        } catch (error) {
+            statusText.innerText = '❌ Ошибка соединения с сервером.';
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
